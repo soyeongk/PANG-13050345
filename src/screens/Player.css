@@ -8,3 +8,13 @@
   border-radius: 8px;
   will-change: transform;
 }
+
+.player--invulnerable {
+  animation: player-blink 0.2s steps(1) infinite;
+}
+
+@keyframes player-blink {
+  50% {
+    opacity: 0.3;
+  }
+}

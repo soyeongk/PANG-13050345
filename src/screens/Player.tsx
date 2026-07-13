@@ -1,8 +1,13 @@
 import { forwardRef } from 'react'
 import './Player.css'
 
-const Player = forwardRef<HTMLDivElement>((_props, ref) => {
-  return <div ref={ref} className="player" />
+type PlayerProps = {
+  invulnerable?: boolean
+}
+
+const Player = forwardRef<HTMLDivElement, PlayerProps>(({ invulnerable }, ref) => {
+  const className = invulnerable ? 'player player--invulnerable' : 'player'
+  return <div ref={ref} className={className} />
 })
 
 Player.displayName = 'Player'

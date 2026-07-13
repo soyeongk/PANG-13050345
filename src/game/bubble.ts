@@ -1,6 +1,18 @@
-import { GRAVITY, BUBBLE_BOUNCE_VY } from './constants'
+import {
+  GRAVITY,
+  BUBBLE_BOUNCE_VY,
+  BUBBLE_RADIUS,
+  BUBBLE_INITIAL_VX,
+  BUBBLE_SPLIT_VY,
+} from './constants'
 
 export type BubbleSize = 'large' | 'medium' | 'small'
+
+const NEXT_SIZE: Record<BubbleSize, BubbleSize | null> = {
+  large: 'medium',
+  medium: 'small',
+  small: null,
+}
 
 export type Bubble = {
   id: number
@@ -63,4 +75,27 @@ export function updateBubble(
   }
 
   return { ...bubble, x, y, vx, vy }
+}
+
+export function splitBubble(bubble: Bubble): Bubble[] {
+  const nextSize = NEXT_SIZE[bubble.size]
+  if (!nextSize) return []
+
+  const radius = BUBBLE_RADIUS[nextSize]
+  return [
+    createBubble({
+      x: bubble.x,
+      y: bubble.y,
+      vx: -BUBBLE_INITIAL_VX,
+      radius,
+      size: nextSize,
+    }),
+    createBubble({
+      x: bubble.x,
+      y: bubble.y,
+      vx: BUBBLE_INITIAL_VX,
+      radius,
+      size: nextSize,
+    }),
+  ].map((b) => ({ ...b, vy: BUBBLE_SPLIT_VY }))
 }

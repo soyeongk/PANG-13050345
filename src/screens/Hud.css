@@ -1,0 +1,9 @@
+.hud {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  color: #fff;
+  font-size: 1.1rem;
+  font-family: sans-serif;
+  z-index: 10;
+}
