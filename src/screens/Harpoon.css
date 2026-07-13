@@ -1,0 +1,9 @@
+.harpoon {
+  position: absolute;
+  left: 0;
+  bottom: 24px;
+  width: 4px;
+  height: 24px;
+  background: #ffd166;
+  will-change: transform;
+}
