@@ -1,11 +1,17 @@
-import './App.css'
+import { useState } from 'react'
+import MainScreen from './screens/MainScreen'
+import GameScreen from './screens/GameScreen'
+
+type Screen = 'main' | 'game'
 
 function App() {
-  return (
-    <div className="hello-world">
-      <h1>Hello World</h1>
-    </div>
-  )
+  const [screen, setScreen] = useState<Screen>('main')
+
+  if (screen === 'game') {
+    return <GameScreen />
+  }
+
+  return <MainScreen onStart={() => setScreen('game')} />
 }
 
 export default App

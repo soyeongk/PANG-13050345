@@ -5,6 +5,7 @@
 ## 기획 문서
 
 - `docs/PRD.md`: 팡(Pang) 게임 및 Mission 1에 대한 전체적인 개요(PRD)
+- `docs/PLAN.md`: Phase별 목표를 세운 문서
 - `docs/FEATURES/main.md`: 첫 메인 화면 구성 초안
 - `docs/FEATURES/game_rule.md`: 게임 룰에 대한 상세 내용 (풍선 분열, 충돌/HP, 점수 등)
 - `docs/FEATURES/mission1.md`: Mission 1의 게임 난이도 및 세부 규칙
