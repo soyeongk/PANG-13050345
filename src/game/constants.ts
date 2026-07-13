@@ -20,4 +20,5 @@ export const BUBBLE_RADIUS = {
 export const BUBBLE_SPLIT_VY = -300 // px/sec, 분열 직후 위로 튀는 초기 속도
 
 export const PLAYER_INITIAL_HP = 5
+export const PLAYER_INITIAL_LIVES = 3
 export const INVULNERABILITY_DURATION = 1000 // ms

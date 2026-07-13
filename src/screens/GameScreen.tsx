@@ -3,6 +3,7 @@ import Player from './Player'
 import Harpoon from './Harpoon'
 import BubbleView from './Bubble'
 import Hud from './Hud'
+import ResultOverlay from './ResultOverlay'
 import { useGameLoop } from '../game/useGameLoop'
 import { useKeyboard } from '../game/useKeyboard'
 import { clamp } from '../game/math'
@@ -14,6 +15,7 @@ import {
   PLAYER_SPEED,
   PLAYER_BOTTOM_OFFSET,
   PLAYER_INITIAL_HP,
+  PLAYER_INITIAL_LIVES,
   HARPOON_WIDTH,
   HARPOON_HEIGHT,
   HARPOON_SPEED,
@@ -32,9 +34,15 @@ type HarpoonEntity = {
 
 type BubbleEntity = Bubble & { el: HTMLDivElement | null }
 
+type GameStatus = 'playing' | 'cleared' | 'gameOver'
+
 let nextHarpoonId = 0
 
-function GameScreen() {
+type GameScreenProps = {
+  onExit: () => void
+}
+
+function GameScreen({ onExit }: GameScreenProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<HTMLDivElement>(null)
   const playerXRef = useRef(0)
@@ -45,7 +53,45 @@ function GameScreen() {
   const [bubbleIds, setBubbleIds] = useState<number[]>([])
   const invulnerableRemainingRef = useRef(0)
   const [hp, setHp] = useState(PLAYER_INITIAL_HP)
+  const [lives, setLives] = useState(PLAYER_INITIAL_LIVES)
   const [isInvulnerable, setIsInvulnerable] = useState(false)
+  const [status, setStatus] = useState<GameStatus>('playing')
+
+  const spawnInitialBubbles = useCallback((container: HTMLDivElement) => {
+    const bubble = createBubble({
+      x: container.clientWidth / 2,
+      y: BUBBLE_RADIUS.large,
+      vx: BUBBLE_INITIAL_VX,
+      radius: BUBBLE_RADIUS.large,
+      size: 'large',
+    })
+    bubblesRef.current = [{ ...bubble, el: null }]
+    setBubbleIds([bubble.id])
+  }, [])
+
+  const resetStage = useCallback(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    setHp(PLAYER_INITIAL_HP)
+    harpoonsRef.current = []
+    setHarpoonIds([])
+    spawnInitialBubbles(container)
+
+    playerXRef.current = container.clientWidth / 2 - PLAYER_WIDTH / 2
+    if (playerRef.current) {
+      playerRef.current.style.transform = `translateX(${playerXRef.current}px)`
+    }
+
+    invulnerableRemainingRef.current = INVULNERABILITY_DURATION
+    setIsInvulnerable(true)
+  }, [spawnInitialBubbles])
+
+  const resetMission = useCallback(() => {
+    setLives(PLAYER_INITIAL_LIVES)
+    resetStage()
+    setStatus('playing')
+  }, [resetStage])
 
   useEffect(() => {
     const container = containerRef.current
@@ -55,16 +101,8 @@ function GameScreen() {
     playerXRef.current = container.clientWidth / 2 - PLAYER_WIDTH / 2
     player.style.transform = `translateX(${playerXRef.current}px)`
 
-    const bubble = createBubble({
-      x: container.clientWidth / 2,
-      y: BUBBLE_RADIUS.large,
-      vx: BUBBLE_INITIAL_VX,
-      radius: BUBBLE_RADIUS.large,
-      size: 'large',
-    })
-    bubblesRef.current.push({ ...bubble, el: null })
-    setBubbleIds((ids) => [...ids, bubble.id])
-  }, [])
+    spawnInitialBubbles(container)
+  }, [spawnInitialBubbles])
 
   const fireHarpoon = useCallback(() => {
     const id = nextHarpoonId++
@@ -91,6 +129,8 @@ function GameScreen() {
   }, [fireHarpoon])
 
   useGameLoop((deltaTime) => {
+    if (status !== 'playing') return
+
     const container = containerRef.current
     const player = playerRef.current
     if (!container || !player) return
@@ -166,6 +206,12 @@ function GameScreen() {
       setBubbleIds(bubblesRef.current.map((b) => b.id))
     }
 
+    // 4-1. 클리어 판정: 모든 풍선(분열 포함)이 제거되었는지 확인
+    if (bubblesRef.current.length === 0) {
+      setStatus('cleared')
+      return
+    }
+
     // 5. 풍선 물리 갱신
     const bounds = { width: containerWidth, height: containerHeight }
     for (const bubble of bubblesRef.current) {
@@ -203,9 +249,21 @@ function GameScreen() {
         ),
       )
       if (isHit) {
-        setHp((prev) => clamp(prev - 1, 0, PLAYER_INITIAL_HP))
-        invulnerableRemainingRef.current = INVULNERABILITY_DURATION
-        setIsInvulnerable(true)
+        const nextHp = clamp(hp - 1, 0, PLAYER_INITIAL_HP)
+        setHp(nextHp)
+
+        if (nextHp === 0) {
+          if (lives <= 1) {
+            setLives(0)
+            setStatus('gameOver')
+          } else {
+            setLives((prev) => prev - 1)
+            resetStage()
+          }
+        } else {
+          invulnerableRemainingRef.current = INVULNERABILITY_DURATION
+          setIsInvulnerable(true)
+        }
       }
     }
   })
@@ -232,7 +290,7 @@ function GameScreen() {
 
   return (
     <div ref={containerRef} className="game-screen">
-      <Hud hp={hp} />
+      <Hud hp={hp} lives={lives} />
       <Player ref={playerRef} invulnerable={isInvulnerable} />
       {harpoonIds.map((id) => (
         <Harpoon key={id} ref={makeHarpoonRef(id)} />
@@ -242,6 +300,9 @@ function GameScreen() {
         const diameter = (entity?.radius ?? BUBBLE_RADIUS.large) * 2
         return <BubbleView key={id} ref={makeBubbleRef(id)} diameter={diameter} />
       })}
+      {status !== 'playing' && (
+        <ResultOverlay status={status} onRestart={resetMission} onExit={onExit} />
+      )}
     </div>
   )
 }
