@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Player from './Player'
 import Harpoon from './Harpoon'
+import BubbleView from './Bubble'
 import { useGameLoop } from '../game/useGameLoop'
 import { useKeyboard } from '../game/useKeyboard'
 import { clamp } from '../game/math'
+import { createBubble, updateBubble, type Bubble } from '../game/bubble'
 import {
   PLAYER_WIDTH,
   PLAYER_SPEED,
   HARPOON_WIDTH,
   HARPOON_SPEED,
+  BUBBLE_RADIUS,
+  BUBBLE_INITIAL_VX,
 } from '../game/constants'
 import './GameScreen.css'
 
@@ -19,6 +23,8 @@ type HarpoonEntity = {
   el: HTMLDivElement | null
 }
 
+type BubbleEntity = Bubble & { el: HTMLDivElement | null }
+
 let nextHarpoonId = 0
 
 function GameScreen() {
@@ -28,6 +34,8 @@ function GameScreen() {
   const keysRef = useKeyboard()
   const harpoonsRef = useRef<HarpoonEntity[]>([])
   const [harpoonIds, setHarpoonIds] = useState<number[]>([])
+  const bubblesRef = useRef<BubbleEntity[]>([])
+  const [bubbleIds, setBubbleIds] = useState<number[]>([])
 
   useEffect(() => {
     const container = containerRef.current
@@ -36,6 +44,16 @@ function GameScreen() {
 
     playerXRef.current = container.clientWidth / 2 - PLAYER_WIDTH / 2
     player.style.transform = `translateX(${playerXRef.current}px)`
+
+    const bubble = createBubble({
+      x: container.clientWidth / 2,
+      y: BUBBLE_RADIUS.large,
+      vx: BUBBLE_INITIAL_VX,
+      radius: BUBBLE_RADIUS.large,
+      size: 'large',
+    })
+    bubblesRef.current.push({ ...bubble, el: null })
+    setBubbleIds((ids) => [...ids, bubble.id])
   }, [])
 
   const fireHarpoon = useCallback(() => {
@@ -97,6 +115,18 @@ function GameScreen() {
       const remainingIds = new Set(remaining.map((h) => h.id))
       setHarpoonIds((ids) => ids.filter((id) => remainingIds.has(id)))
     }
+
+    const bounds = { width: containerWidth, height: containerHeight }
+    for (const bubble of bubblesRef.current) {
+      const updated = updateBubble(bubble, deltaTime, bounds)
+      bubble.x = updated.x
+      bubble.y = updated.y
+      bubble.vx = updated.vx
+      bubble.vy = updated.vy
+      if (bubble.el) {
+        bubble.el.style.transform = `translate(${bubble.x - bubble.radius}px, ${bubble.y - bubble.radius}px)`
+      }
+    }
   })
 
   const makeHarpoonRef = (id: number) => (el: HTMLDivElement | null) => {
@@ -109,12 +139,27 @@ function GameScreen() {
     }
   }
 
+  const makeBubbleRef = (id: number) => (el: HTMLDivElement | null) => {
+    const entity = bubblesRef.current.find((b) => b.id === id)
+    if (entity) {
+      entity.el = el
+      if (el) {
+        el.style.transform = `translate(${entity.x - entity.radius}px, ${entity.y - entity.radius}px)`
+      }
+    }
+  }
+
   return (
     <div ref={containerRef} className="game-screen">
       <Player ref={playerRef} />
       {harpoonIds.map((id) => (
         <Harpoon key={id} ref={makeHarpoonRef(id)} />
       ))}
+      {bubbleIds.map((id) => {
+        const entity = bubblesRef.current.find((b) => b.id === id)
+        const diameter = (entity?.radius ?? BUBBLE_RADIUS.large) * 2
+        return <BubbleView key={id} ref={makeBubbleRef(id)} diameter={diameter} />
+      })}
     </div>
   )
 }
